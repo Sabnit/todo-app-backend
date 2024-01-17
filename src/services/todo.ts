@@ -1,6 +1,7 @@
 import NotFoundError from "../error/notFoundError";
-import { ITodo, QueryTodo } from "../interface/todo";
+import { ITodo } from "../interface/todo";
 import TodoModel from "../model/todo";
+import { buildMeta, getPaginationOptions } from "../util/pagination";
 
 export async function createTodo(title: string, userId: number) {
   const newTodo: ITodo = {
@@ -10,19 +11,30 @@ export async function createTodo(title: string, userId: number) {
   return TodoModel.createTodo(newTodo);
 }
 
-export async function getTodos(userId: number, query: QueryTodo) {
-  const { search, completed } = query;
+export async function getTodos(userId: number, params: ITodo) {
+  const { page, size } = params;
 
-  const todos = await TodoModel.getTodos();
+  const pageDetails = getPaginationOptions({ page, size });
 
-  return todos.filter(
-    (todo) =>
-      todo.createdBy === userId &&
-      (search
-        ? todo.title.toLowerCase().includes(search.toLowerCase())
-        : true) &&
-      (completed ? todo.completed === completed : true)
-  );
+  const transactionsPromise = TodoModel.getTodos({
+    ...pageDetails,
+    ...params,
+  });
+
+  const countPromise = TodoModel.countAll(params);
+
+  const [transaction, count] = await Promise.all([
+    transactionsPromise,
+    countPromise,
+  ]);
+
+  const total = count.count;
+  const meta = buildMeta(total, size, page);
+
+  return {
+    data: transaction,
+    meta,
+  };
 }
 
 export async function getTodoById(id: number, userId: number) {

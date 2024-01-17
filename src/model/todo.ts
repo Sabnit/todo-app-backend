@@ -1,11 +1,20 @@
-import { ITodo, QueryTodo } from "../interface/todo";
+import { Knex } from "knex";
+import { ITodo } from "../interface/todo";
 import BaseModel from "./baseModel";
 
 export default class TodoModel extends BaseModel {
-  static async getTodos() {
-    return this.queryBuilder()
+  private static injectFilter(query: Knex.QueryBuilder, params: any) {
+    if (params.completed) {
+      query.where({
+        completed: params.completed,
+      });
+    }
+  }
+
+  static async getTodos(params: any) {
+    const query = this.queryBuilder()
       .select({
-        id: "t.id",
+        id: "todo.id",
         title: "title",
         completed: "completed",
         createdBy: "created_by",
@@ -13,6 +22,12 @@ export default class TodoModel extends BaseModel {
       })
       .from({ t: "tasks" })
       .leftJoin({ u: "users" }, { "t.created_by": "u.id" });
+
+    this.injectFilter(query, params);
+
+    query.offset(params.offset).limit(params.limit);
+
+    return query;
   }
 
   static async getTodoById(id: number, userId: number) {
@@ -26,6 +41,18 @@ export default class TodoModel extends BaseModel {
       .from("tasks")
       .where({ id, createdBy: userId })
       .first();
+  }
+
+  static countAll(params: any) {
+    const query = this.queryBuilder()
+      .table("tasks")
+      .where({ Created_by: params.createdBy })
+      .count({ count: "tasks.id" })
+      .first();
+
+    this.injectFilter(query, params);
+
+    return query;
   }
 
   static async createTodo(todo: ITodo) {

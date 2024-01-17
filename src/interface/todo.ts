@@ -1,10 +1,7 @@
-export interface ITodo {
+import { PaginationQuery } from "./pagination";
+
+export interface ITodo extends PaginationQuery {
   title: string;
   completed?: boolean;
   createdBy: number;
-}
-
-export interface QueryTodo {
-  search?: string;
-  completed?: boolean;
 }
